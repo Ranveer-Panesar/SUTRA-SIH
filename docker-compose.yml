@@ -24,6 +24,7 @@ services:
   pg_tileserv:
     image: pramsey/pg_tileserv:latest
     container_name: bhoomisync_tileserv
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-bhoomi}:${POSTGRES_PASSWORD:-bhoomi_secret}@db:5432/${POSTGRES_DB:-landstack}
     ports:

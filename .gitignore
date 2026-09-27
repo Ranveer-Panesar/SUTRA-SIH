@@ -311,8 +311,6 @@ stats.json
 
 # TypeScript
 *.tsbuildinfo
-*.tsx
-*.ts
 
 # Next.js
 .next/
@@ -962,8 +960,6 @@ stats.json
 
 # TypeScript
 *.tsbuildinfo
-*.tsx
-*.ts
 
 # Next.js
 .next/

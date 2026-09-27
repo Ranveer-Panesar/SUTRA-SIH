@@ -4,6 +4,7 @@ import React, { useRef, useCallback, useState, useEffect } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useMapStore } from "@/lib/store";
+import PropertyDetailsModal from "./PropertyDetailsModal";
 
 if (typeof window !== 'undefined') {
   maplibregl.setWorkerCount(1);
@@ -52,6 +53,7 @@ export default function MapView() {
   const [debugLog, setDebugLog] = useState<string>("Initializing map...");
   const [hoverInfo, setHoverInfo] = useState<any>(null);
   const markerRefs = useRef<maplibregl.Marker[]>([]);
+  const activePinRef = useRef<maplibregl.Marker | null>(null);
 
   // Initialize Map
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function MapView() {
       container: mapContainer.current,
       style: MAP_STYLE,
       center: MOHALI_CENTER,
-      zoom: 12,
+      zoom: 16,
     });
 
     mapRef.current = map;
@@ -82,7 +84,7 @@ export default function MapView() {
         id: "parcels-fill",
         type: "fill",
 
-        "source-layer": "parcels_tile_view",
+        "source-layer": "public.parcels_tile_view",
 
         source: "parcels",
         paint: {
@@ -103,7 +105,7 @@ export default function MapView() {
         id: "parcels-line",
         type: "line",
 
-        "source-layer": "parcels_tile_view",
+        "source-layer": "public.parcels_tile_view",
 
         source: "parcels",
         paint: {
@@ -141,16 +143,28 @@ export default function MapView() {
       const updateDebug = () => {
         try {
           const style = map.getStyle();
+          let msg = "";
           if (style && style.layers) {
-            setDebugLog("Active Layers: " + style.layers.map((l: any) => l.id).join(", "));
+            msg = "Active Layers: " + style.layers.map((l: any) => l.id).join(", ");
           }
+          
+          // Debug actual source features to find the mysterious layer name!
+          const features = map.querySourceFeatures("parcels");
+          if (features.length > 0) {
+            const layerNames = Array.from(new Set(features.map((f: any) => f.layer?.id || f.sourceLayer)));
+            msg += " | FOUND VECTOR LAYERS: " + layerNames.join(", ");
+          } else {
+            msg += " | NO FEATURES IN PARCELS SOURCE YET";
+          }
+          
+          setDebugLog(msg);
         } catch (err: any) {
           setDebugLog("Error: " + err.message);
         }
       };
 
       map.on('idle', updateDebug);
-      map.on('styledata', updateDebug);
+      map.on('sourcedata', updateDebug);
       updateDebug();
     });
 
@@ -171,7 +185,7 @@ export default function MapView() {
   useEffect(() => {
     if (!mapRef.current) return;
     const map = mapRef.current;
-    const [cx, cy] = BENGALURU_CENTER;
+    const [cx, cy] = [76.7179, 30.7046];
 
     const syncLayer = (sourceId: string, active: boolean, sourceDef: any, layerDefs: any[]) => {
       if (active) {
@@ -188,40 +202,34 @@ export default function MapView() {
     };
 
     const runSync = () => {
-      // ── Water Lines — approximate BBMP water main corridors across Bengaluru
+      // ── Water Lines — approximate Mohali water main corridors
       syncLayer('water-lines', !!activeLayers.waterLines, {
         type: "geojson",
         data: {
           type: "FeatureCollection",
           features: [
-            // Hebbal → Yeshwantpur → Rajajinagar corridor (N-S)
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.035], [77.5590, 12.9922], [77.5528, 12.9677]] }, properties: {} },
-            // Whitefield → Marathahalli → Koramangala (E)
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.7480, 12.9699], [77.6964, 12.9568], [77.6245, 12.9352]] }, properties: {} },
-            // Banashankari → Jayanagar → BTM (S)
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5470, 12.9255], [77.5831, 12.9299], [77.6151, 12.9131]] }, properties: {} },
-            // Yelahanka → Hebbal trunk main
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.1015], [77.5946, 13.035]] }, properties: {} },
-            // Electronic City feeder
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.6701, 12.8455], [77.6400, 12.8700], [77.6245, 12.9352]] }, properties: {} },
+            // Airport Road (E-W)
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[76.74, 30.68], [76.7179, 30.7046], [76.68, 30.73]] }, properties: {} },
+            // Phase 7 to 3B2 (N-S)
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[76.72, 30.71], [76.7179, 30.7046], [76.71, 30.70]] }, properties: {} },
+            // Sector 74 to Industrial Area
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[76.69, 30.72], [76.71, 30.70], [76.73, 30.69]] }, properties: {} }
           ]
         }
       }, [{ id: 'water-lines-layer', type: 'line', paint: { "line-color": "#3B82F6", "line-width": 2.5, "line-opacity": 0.8 } }]);
 
-      // ── Power Grid — approximate KPTCL 220 kV transmission corridors
+      // ── Power Grid — approximate Mohali transmission corridors
       syncLayer('power-grid', !!activeLayers.powerGrid, {
         type: "geojson",
         data: {
           type: "FeatureCollection",
           features: [
-            // N-S backbone: Hebbal → Silk Board
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.035], [77.5946, 12.9716], [77.6200, 12.9177]] }, properties: {} },
-            // E-W backbone: Rajajinagar → Whitefield
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5528, 12.9922], [77.5946, 12.9716], [77.6964, 12.9568], [77.7480, 12.9699]] }, properties: {} },
-            // SW spur: Banashankari → Electronic City
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5470, 12.9255], [77.6151, 12.9131], [77.6701, 12.8455]] }, properties: {} },
-            // NE spur: Hebbal → Yelahanka
-            { type: "Feature", geometry: { type: "LineString", coordinates: [[77.5946, 13.035], [77.6064, 13.0600], [77.5946, 13.1015]] }, properties: {} },
+            // Sector 62 to Sector 71
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[76.74, 30.69], [76.7179, 30.7046], [76.70, 30.70]] }, properties: {} },
+            // Sector 82 Industrial to Sector 66
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[76.75, 30.65], [76.73, 30.67], [76.71, 30.69]] }, properties: {} },
+            // Kharar to Sector 74
+            { type: "Feature", geometry: { type: "LineString", coordinates: [[76.65, 30.74], [76.67, 30.73], [76.69, 30.72]] }, properties: {} }
           ]
         }
       }, [{ id: 'power-grid-layer', type: 'line', paint: { "line-color": "#F59E0B", "line-width": 2, "line-opacity": 0.85 } }]);
@@ -462,7 +470,7 @@ export default function MapView() {
     if (activeULPIN && mapRef.current) {
       const map = mapRef.current;
       const features = map.querySourceFeatures("parcels", {
-        sourceLayer: "parcels_tile_view",
+        sourceLayer: "public.parcels_tile_view",
         filter: ["==", "ulpin", activeULPIN]
       });
 
@@ -482,12 +490,20 @@ export default function MapView() {
           coords = [lng, lat];
         }
         if (coords) {
+          if (activePinRef.current) activePinRef.current.remove();
+          activePinRef.current = new maplibregl.Marker({ color: "#00C896" })
+            .setLngLat(coords)
+            .addTo(map);
           map.flyTo({ center: coords, zoom: 19, essential: true });
         }
       } else {
         // Feature not in current viewport tiles — check defaulterMarkers then API
         const marker = defaulterMarkers.find(m => m.ulpin === activeULPIN);
         if (marker) {
+          if (activePinRef.current) activePinRef.current.remove();
+          activePinRef.current = new maplibregl.Marker({ color: "#00C896" })
+            .setLngLat(marker.coordinates)
+            .addTo(map);
           map.flyTo({ center: marker.coordinates, zoom: 19, essential: true });
         } else {
           // API now returns ST_Centroid as a GeoJSON Point
@@ -496,15 +512,25 @@ export default function MapView() {
             .then(parcel => {
               if (parcel && parcel.geometry && parcel.geometry.type === "Point") {
                 const [lng, lat] = parcel.geometry.coordinates as [number, number];
+                if (activePinRef.current) activePinRef.current.remove();
+                activePinRef.current = new maplibregl.Marker({ color: "#00C896" })
+                  .setLngLat([lng, lat])
+                  .addTo(map);
                 map.flyTo({ center: [lng, lat], zoom: 19, essential: true });
                 return;
               }
-              map.flyTo({ center: BENGALURU_CENTER, zoom: 14, essential: true });
+              map.flyTo({ center: MOHALI_CENTER, zoom: 14, essential: true });
             })
             .catch(() => {
-              map.flyTo({ center: BENGALURU_CENTER, zoom: 14, essential: true });
+              map.flyTo({ center: MOHALI_CENTER, zoom: 14, essential: true });
             });
         }
+      }
+    } else {
+      // Clear the active pin if no parcel is selected
+      if (activePinRef.current) {
+        activePinRef.current.remove();
+        activePinRef.current = null;
       }
     }
   }, [activeULPIN]);
@@ -530,6 +556,14 @@ export default function MapView() {
         }}>
           ULPIN: {hoverInfo.feature.properties.ulpin}
         </div>
+      )}
+
+      {/* Render Property Details Modal when activeULPIN is set */}
+      {activeULPIN && (
+        <PropertyDetailsModal 
+          ulpin={activeULPIN} 
+          onClose={() => setActiveULPIN(null)} 
+        />
       )}
 
       {/* Debug internal MapLibre state */}

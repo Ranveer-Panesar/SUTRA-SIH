@@ -58,7 +58,7 @@ async def get_parcel(ulpin: str, db: AsyncSession = Depends(get_db)):
         select(ConflictAlert)
         .where(ConflictAlert.parcel_id == parcel.id, ConflictAlert.resolved == False)
     )
-    has_conflict = conflict_result.scalar_one_or_none() is not None
+    has_conflict = conflict_result.first() is not None
 
     return ParcelDetail(
         id=parcel.id,
@@ -131,6 +131,19 @@ async def get_fiscal(ulpin: str, db: AsyncSession = Depends(get_db)):
         total_arrears=total_arrears,
         records=[TaxRecordOut.model_validate(r) for r in records],
     )
+
+
+# ─── Notifications ────────────────────────────────────────────────────────────
+
+@router.post("/parcels/{ulpin}/notify-defaulter")
+async def notify_defaulter(ulpin: str, db: AsyncSession = Depends(get_db)):
+    """Mock endpoint to send SMS/Email to a tax defaulter."""
+    result = await db.execute(select(Parcel).where(Parcel.ulpin == ulpin))
+    parcel = result.scalar_one_or_none()
+    if not parcel:
+        raise HTTPException(status_code=404, detail="Parcel not found")
+        
+    return {"status": "success", "message": f"Notice sent to owner of {ulpin}"}
 
 
 # ─── Utilities ────────────────────────────────────────────────────────────────

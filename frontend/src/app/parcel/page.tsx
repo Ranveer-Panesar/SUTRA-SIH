@@ -6,7 +6,8 @@ import {
   getParcelUtilities, getParcelInfra,
   ParcelDetail, OwnershipResponse, FiscalResponse, UtilitiesResponse, InfraRecord,
 } from "@/lib/api";
-import { Search, Building2, User, IndianRupee, Zap, Droplets, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import LandDeedViewer from "@/components/parcel/LandDeedViewer";
+import { Search, Building2, User, IndianRupee, Zap, Droplets, AlertTriangle, CheckCircle, Clock, FileText } from "lucide-react";
 import { useMapStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 
@@ -47,6 +48,7 @@ export default function ParcelPage() {
   const [fiscal, setFiscal] = useState<FiscalResponse | null>(null);
   const [utilities, setUtilities] = useState<UtilitiesResponse | null>(null);
   const [infra, setInfra] = useState<InfraRecord | null>(null);
+  const [showDeed, setShowDeed] = useState(false);
   const { setActiveULPIN } = useMapStore();
   const router = useRouter();
 
@@ -128,13 +130,29 @@ export default function ParcelPage() {
               <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{parcel.address}</div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{parcel.ward_name} · {parcel.district} · {parcel.state}</div>
             </div>
-            <button onClick={openOnMap} style={{
-              padding: "8px 14px", background: "var(--accent-dim)", color: "var(--accent)",
-              border: "1px solid var(--border-accent)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
-            }}>
-              📍 View on Map
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button onClick={() => setShowDeed(true)} style={{
+                padding: "8px 14px", background: "#0F172A", color: "#fff",
+                border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, justifyContent: "center"
+              }}>
+                <FileText size={14} /> View Land Deed
+              </button>
+              <button onClick={openOnMap} style={{
+                padding: "8px 14px", background: "var(--accent-dim)", color: "var(--accent)",
+                border: "1px solid var(--border-accent)", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 6, justifyContent: "center"
+              }}>
+                📍 View on Map
+              </button>
+            </div>
           </div>
+
+          {showDeed && (
+            <LandDeedViewer 
+              parcel={parcel}
+              ownership={ownership}
+              onClose={() => setShowDeed(false)}
+            />
+          )}
 
           {/* Land Details */}
           <Section title="Land Details">

@@ -25,9 +25,9 @@ DB_URL = os.getenv(
     "postgresql://bhoomi:bhoomi_secret@localhost:5432/landstack",
 )
 
-# Bengaluru center
-CENTER_LAT = 12.9716
-CENTER_LON = 77.5946
+# Mohali center
+CENTER_LAT = 30.7046
+CENTER_LON = 76.7179
 
 # Parcel grid: 6 rows × 5 cols = 30 parcels
 GRID_ROWS = 6
@@ -39,9 +39,9 @@ GRID_STEP_LON = 0.00065
 GRID_STEP_LAT = 0.00070
 
 WARDS = [
-    "Shivajinagar", "Rajajinagar", "Malleswaram", "Basavanagudi",
-    "Jayanagar", "Indiranagar", "Koramangala", "BTM Layout",
-    "Whitefield", "Hebbal",
+    "Sector 62", "Sector 70", "Sector 71", "Sector 59",
+    "Phase 7", "Phase 3B2", "Sector 67", "Sector 68",
+    "Sector 66", "Phase 11",
 ]
 
 LAND_USES = ["Residential"] * 14 + ["Commercial"] * 8 + ["Industrial"] * 4 + ["Agricultural"] * 2 + ["Mixed"] * 2
@@ -84,8 +84,8 @@ def make_polygon(center_lon: float, center_lat: float) -> str:
 
 def make_ulpin(state: str, row: int, col: int, index: int) -> str:
     """14-digit ULPIN: state(2) + district(2) + taluk(3) + village(3) + parcel(4)"""
-    state_code = "29"      # Karnataka
-    district   = "04"      # Bengaluru Urban
+    state_code = "03"      # Punjab
+    district   = "59"      # SAS Nagar
     taluk      = f"{(row + 1):03d}"
     village    = f"{(col + 1):03d}"
     parcel_no  = f"{(index + 1):04d}"
@@ -129,18 +129,20 @@ def seed():
             center_lon = start_lon + col * GRID_STEP_LON + GRID_STEP_LON / 2
             center_lat = start_lat + row * GRID_STEP_LAT + GRID_STEP_LAT / 2
 
-            ulpin = make_ulpin("29", row, col, index)
-            plot_no = f"KA/BLR/{row+1:02d}/{col+1:02d}/{index+1:04d}"
+            # 90% get valid ULPIN, 10% get unassigned unique placeholder
+            is_assigned = random.random() < 0.90
+            ulpin = make_ulpin("03", row, col, index) if is_assigned else f"PENDING-{index:06d}"
+            plot_no = f"PB/MOH/{row+1:02d}/{col+1:02d}/{index+1:04d}"
             geometry = make_polygon(center_lon, center_lat)
             area_sqm = round(PARCEL_W * PARCEL_H * 111_000 * 108_000, 1)
             land_use = LAND_USES[index % len(LAND_USES)]
             ward = WARDS[index % len(WARDS)]
-            address = f"{random.randint(10, 999)}, {ward} Main Road, {ward}, Bengaluru - {560001 + row}"
+            address = f"{random.randint(10, 999)}, {ward} Main Road, {ward}, Mohali - {160055 + row}"
 
             parcels_data.append((
                 parcel_id, ulpin, plot_no, geometry,
                 area_sqm, land_use, ward,
-                "Bengaluru Urban", "Karnataka", address,
+                "SAS Nagar", "Punjab", address,
             ))
 
             # ── Owners (current + 2-3 historical) ─────────────────────────────
