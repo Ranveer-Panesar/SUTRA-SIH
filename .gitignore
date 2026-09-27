@@ -641,7 +641,6 @@ requirements.yaml
 requirements.lock
 NOTES.txt
 Makefile
-README.md
 
 # Terraform
 .terraform/
@@ -1290,7 +1289,6 @@ requirements.yaml
 requirements.lock
 NOTES.txt
 Makefile
-README.md
 
 # Terraform
 .terraform/
@@ -1995,7 +1993,6 @@ requirements.yaml
 requirements.lock
 NOTES.txt
 Makefile
-README.md
 
 # Terraform
 .terraform/
